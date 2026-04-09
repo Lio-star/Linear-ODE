@@ -1,46 +1,49 @@
 
 # Linear-ODE
 
-A structured and modular implementation for running and comparing Linear ODE learning methods in a clean workflow.
+A modular and reproducible framework for running, comparing, and visualizing Linear ODE learning methods under a shared experimental pipeline.
 
-This repository is designed to make experiments easier to run, compare, and present. It supports multiple models under one pipeline, generates plots, and displays a formatted summary table inside the notebook.
-
----
-
-## Features
-
-- Structured project layout
-- Multiple solver support under one interface
-- Easy experiment control from a single notebook
-- Inline plots for loss curves and trajectories
-- Formatted summary table for final results
-- Clean separation of core logic, solvers, utilities, and outputs
+This repository is designed to keep the workflow clean and extensible. Model implementations are separated from experiment orchestration and utility functions, making the project easier to read, maintain, and expand. The code supports side-by-side benchmarking of multiple methods, inline visualization in Jupyter notebooks, and formatted summary tables for reporting final results.
 
 ---
 
-## Project Structure
+## Overview
+
+Linear-ODE provides a structured environment for:
+
+- generating trajectory data under controlled settings
+- running multiple Linear ODE solvers with shared experiment configurations
+- comparing runtime and optimization performance across methods
+- visualizing loss curves and trajectories
+- summarizing final experiment results in a clean tabular format
+
+The current framework includes two primary methods:
+
+- **Autodiff**
+- **OurModel**
+
+---
+
+## Repository Structure
 
 ```text
 Linear-ODE/
 ├── configs/
-│   └── default_config.py          # Default experiment settings
-├── outputs/
-│   ├── figures/                   # Saved plots (if saving is enabled)
-│   └── tables/                    # Saved tables (if saving is enabled)
+│   └── default_config.py
 ├── solvers/
 │   ├── __init__.py
-│   ├── autodiff.py                # Autodiff-based Linear ODE solver
-│   └── our_model.py               # Proposed custom model
+│   ├── autodiff.py
+│   └── our_model.py
 ├── utils/
 │   ├── __init__.py
-│   ├── data_generation.py         # Synthetic data generation and mask creation
-│   ├── frechet.py                 # Frechet / matrix exponential utilities
-│   ├── plotting.py                # Plotting functions
-│   └── summary.py                 # Summary table creation and styling
-├── example.ipynb                  # Main notebook for running experiments
-├── main_code_experiment.py        # Main experiment pipeline
-├── model_runner.py                # Model registry and execution helpers
-├── original_notebook.ipynb        # Older notebook version
-├── requirements.txt               # Python dependencies
+│   ├── data_generation.py
+│   ├── frechet.py
+│   ├── plotting.py
+│   └── summary.py
+├── example.ipynb
+├── main_code_experiment.py
+├── model_runner.py
+├── original_notebook.ipynb
+├── requirements.txt
 ├── README.md
 └── .gitignore
