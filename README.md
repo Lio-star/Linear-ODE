@@ -37,7 +37,6 @@ Linear-ODE/                               (PROJECT ROOT)
 ├── example.ipynb                         # Main notebook for running experiments
 ├── main_code_experiment.py               # High-level experiment pipeline
 ├── model_runner.py                       # Model registry and execution dispatcher
-├── original_notebook.ipynb               # Older notebook version
 ├── requirements.txt                      # Python dependencies
 ├── README.md
 └── .gitignore
