@@ -49,8 +49,3 @@ Linear-ODE/
 └── .gitignore
 
 
-Setup
-
-1) Clone
-git clone https://github.com/Lio-star/Linear-ODE.git
-cd Linear-ODE
