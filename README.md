@@ -1,17 +1,46 @@
 
-# Main Code Structured Repo
+# Linear-ODE
 
-This repo is organized so you can run either model by name from `example.ipynb`.
+A structured and modular implementation for running and comparing Linear ODE learning methods in a clean workflow.
 
-Supported model names:
-- `autodiff`
-- `our_model`
+This repository is designed to make experiments easier to run, compare, and present. It supports multiple models under one pipeline, generates plots, and displays a formatted summary table inside the notebook.
 
-Typical notebook inputs:
-```python
-MODELS_TO_RUN = ["autodiff", "our_model"]
-CONFIGS = [{"NumAllGene": 2000, "NumTF": 1500, "B": 1}]
-DATA_SEEDS = [11, 22, 33, 44, 55, 66, 77, 88, 99, 111]
-```
+---
 
-By default, the notebook shows the summary table and plots inline and does not save files.
+## Features
+
+- Structured project layout
+- Multiple solver support under one interface
+- Easy experiment control from a single notebook
+- Inline plots for loss curves and trajectories
+- Formatted summary table for final results
+- Clean separation of core logic, solvers, utilities, and outputs
+
+---
+
+## Project Structure
+
+```text
+Linear-ODE/
+├── configs/
+│   └── default_config.py          # Default experiment settings
+├── outputs/
+│   ├── figures/                   # Saved plots (if saving is enabled)
+│   └── tables/                    # Saved tables (if saving is enabled)
+├── solvers/
+│   ├── __init__.py
+│   ├── autodiff.py                # Autodiff-based Linear ODE solver
+│   └── our_model.py               # Proposed custom model
+├── utils/
+│   ├── __init__.py
+│   ├── data_generation.py         # Synthetic data generation and mask creation
+│   ├── frechet.py                 # Frechet / matrix exponential utilities
+│   ├── plotting.py                # Plotting functions
+│   └── summary.py                 # Summary table creation and styling
+├── example.ipynb                  # Main notebook for running experiments
+├── main_code_experiment.py        # Main experiment pipeline
+├── model_runner.py                # Model registry and execution helpers
+├── original_notebook.ipynb        # Older notebook version
+├── requirements.txt               # Python dependencies
+├── README.md
+└── .gitignore
