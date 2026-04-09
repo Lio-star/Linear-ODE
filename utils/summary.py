@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from solver import MODEL_REGISTRY, normalize_models
+from model_runner import MODEL_REGISTRY, normalize_models
 
 
 DISPLAY_NAME_MAP = {
