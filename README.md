@@ -47,3 +47,6 @@ Linear-ODE/
 ├── requirements.txt
 ├── README.md
 └── .gitignore
+
+git clone https://github.com/Lio-star/Linear-ODE.git
+cd Linear-ODE
