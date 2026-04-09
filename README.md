@@ -48,7 +48,3 @@ Linear-ODE/
 ├── README.md
 └── .gitignore
 
-
-## scmvnlkxfvkmkxfv
-
-lms cckmlsdj clksdmclksdmclksd
