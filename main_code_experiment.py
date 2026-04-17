@@ -4,25 +4,26 @@ import random
 from pathlib import Path
 
 import numpy as np
-import pandas as pd
 import torch
 
 from model_runner import MODEL_REGISTRY, build_shared_init_A, fit_models, normalize_models
 from utils.data_generation import build_mask_and_generate_data
 from utils.plotting import plot_seed_losses, plot_seed_trajectories
-from utils.summary import build_summary_table, print_final_summary_banner, save_summary_tables
+from utils.summary import (
+    build_summary_table,
+    print_final_summary_banner,
+    save_summary_tables,
+)
 
 
 class MainCodeExperiment:
     """
     Main experiment runner.
 
-    What this version does:
-    - runs one model or both models based on names passed from example.ipynb
-    - generates plots in the notebook
-    - returns the final summary dataframe
-    - does NOT save summary tables to csv/pdf
-    - only saves figures if save_figures=True
+    This version supports:
+    - autodiff
+    - our_model
+    - ou_nll
     """
 
     def __init__(self, env=2, T=100, output_dir="outputs", default_dtype=torch.float32):
@@ -30,11 +31,13 @@ class MainCodeExperiment:
         self.T = T
         self.output_dir = Path(output_dir)
         self.figures_dir = self.output_dir / "figures"
-        self.device = torch.device("cuda" if (env == 2 and torch.cuda.is_available()) else "cpu")
+
+        self.device = torch.device(
+            "cuda" if (env == 2 and torch.cuda.is_available()) else "cpu"
+        )
         self.default_dtype = default_dtype
 
         torch.set_default_dtype(default_dtype)
-
         if self.device.type == "cuda":
             torch.backends.cuda.matmul.allow_tf32 = True
             torch.backends.cudnn.allow_tf32 = True
@@ -58,29 +61,11 @@ class MainCodeExperiment:
         plot_each_seed=True,
         save_figures=False,
         display_figures=True,
-        save_tables=False,   # kept only so your notebook call does not break
+        save_tables=False,
         print_checkpoint_losses=True,
         verbose=False,
         print_every=None,
     ):
-        """
-        Run experiments for all configs and seeds.
-
-        Parameters
-        ----------
-        configs : list of dict
-            Example:
-            [{"NumAllGene": 2000, "NumTF": 1500, "B": 1}]
-        data_seeds : list of int
-            Example:
-            [11, 22, 33, 44]
-        models : list of str
-            Example:
-            ["autodiff", "our_model"]
-        """
-
-        del save_tables  # intentionally unused in this version
-
         models = normalize_models(models)
         checkpoints = checkpoints or [0, 1000, 2000, 3000, 4000, 5000]
 
@@ -105,18 +90,18 @@ class MainCodeExperiment:
 
                 self._set_seed(data_seed)
 
-                # 1) Generate data
-                A_true, Mask, X0, t_span, x_star_true, Y_clean, Y_obs = build_mask_and_generate_data(
-                    NumAllGene=NumAllGene,
-                    NumTF=NumTF,
-                    B=B,
-                    T=self.T,
-                    seed=data_seed,
-                    device=self.device,
-                    dtype=self.default_dtype,
+                A_true, Mask, X0, t_span, x_star_true, Y_clean, Y_obs = (
+                    build_mask_and_generate_data(
+                        NumAllGene=NumAllGene,
+                        NumTF=NumTF,
+                        B=B,
+                        T=self.T,
+                        seed=data_seed,
+                        device=self.device,
+                        dtype=self.default_dtype,
+                    )
                 )
 
-                # 2) Shared init_A for fair comparison
                 G = Y_obs.shape[2]
                 dtype = Y_obs.dtype
                 init_A = build_shared_init_A(
@@ -127,7 +112,6 @@ class MainCodeExperiment:
                     init_seed=init_seed,
                 )
 
-                # 3) Fit selected models
                 outputs, epoch0 = fit_models(
                     models=models,
                     NumAllGene=NumAllGene,
@@ -144,7 +128,6 @@ class MainCodeExperiment:
                     verbose=verbose,
                 )
 
-                # 4) Print checkpoint losses
                 if print_checkpoint_losses:
                     print("\nCheckpoint losses (after k epochs):")
                     for k in checkpoints:
@@ -158,18 +141,17 @@ class MainCodeExperiment:
                                 idx = min(max(k - 1, 0), len(hist) - 1)
                                 loss_value = hist[idx]
                             parts.append(f"{display_name}: {loss_value:.6e}")
-                        print(f"  epoch {k:4d} | " + " | ".join(parts))
+                        print(f" epoch {k:4d} | " + " | ".join(parts))
 
-                # 5) Plot for this seed
-                title = f"G={NumAllGene}, TF={NumTF}, B={B} | data_run={run_idx} (seed={data_seed})"
-
+                title = (
+                    f"G={NumAllGene}, TF={NumTF}, B={B} | "
+                    f"data_run={run_idx} (seed={data_seed})"
+                )
                 predictions = {
-                    outputs[m]["display_name"]: outputs[m]["Y_pred"]
-                    for m in models
+                    outputs[m]["display_name"]: outputs[m]["Y_pred"] for m in models
                 }
                 loss_histories = {
-                    outputs[m]["display_name"]: outputs[m]["loss_history"]
-                    for m in models
+                    outputs[m]["display_name"]: outputs[m]["loss_history"] for m in models
                 }
 
                 if plot_each_seed:
@@ -177,7 +159,10 @@ class MainCodeExperiment:
                     loss_path = None
 
                     if save_figures:
-                        stem = f"G{NumAllGene}_TF{NumTF}_B{B}_run{run_idx:02d}_seed{data_seed}"
+                        stem = (
+                            f"G{NumAllGene}_TF{NumTF}_B{B}_"
+                            f"run{run_idx:02d}_seed{data_seed}"
+                        )
                         traj_path = self.figures_dir / f"{stem}_trajectory.png"
                         loss_path = self.figures_dir / f"{stem}_loss.png"
 
@@ -199,7 +184,6 @@ class MainCodeExperiment:
                         show=display_figures,
                     )
 
-                # 6) Save row for final summary table
                 row = {
                     "NumAllGene": NumAllGene,
                     "NumTF": NumTF,
@@ -209,14 +193,16 @@ class MainCodeExperiment:
                     "K_time": k_time,
                 }
 
-                # Add only the selected model columns
                 for model_key in models:
                     row[MODEL_REGISTRY[model_key]["time_col"]] = outputs[model_key]["time_sec"]
                     row[MODEL_REGISTRY[model_key]["loss_col"]] = outputs[model_key]["final_loss"]
 
+                    sigma2_col = MODEL_REGISTRY[model_key].get("sigma2_col")
+                    if sigma2_col and "sigma2_hat" in outputs[model_key]:
+                        row[sigma2_col] = outputs[model_key]["sigma2_hat"]
+
                 results.append(row)
 
-                # Keep detailed objects in case you need them later
                 run_details.append(
                     {
                         "config": cfg,
@@ -233,18 +219,17 @@ class MainCodeExperiment:
                     }
                 )
 
-        # 7) Build final summary table
         df_final = build_summary_table(results, models)
         df_final = df_final.round(6)
 
-        # Only print the banner here.
-        # Do NOT print(df_final), because that breaks the notebook table formatting.
         print_final_summary_banner()
+
+        if save_tables:
+            save_summary_tables(df_final, self.output_dir)
 
         metadata = {
             "results": results,
             "run_details": run_details,
             "figures_dir": self.figures_dir if save_figures else None,
         }
-
         return df_final, metadata

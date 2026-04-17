@@ -1,14 +1,32 @@
+from __future__ import annotations
+
 import torch
 import torch.nn.functional as F
 
 from solvers.autodiff import LTIExact, run_autodiff_LTI
 from solvers.our_model import run_ourmethod_learn_A_xstar, compute_our_model_epoch0_loss
+from solvers.ou_nll import run_ou_nll_A_xstar, compute_ou_nll_epoch0_loss
 
 
 MODEL_REGISTRY = {
-    "autodiff": {"display_name": "Autodiff", "time_col": "Autodiff_Time", "loss_col": "Autodiff_Loss"},
-    "our_model": {"display_name": "OurModel", "time_col": "OurModel_Time", "loss_col": "OurModel_Loss"},
+    "autodiff": {
+        "display_name": "Autodiff",
+        "time_col": "Autodiff_Time",
+        "loss_col": "Autodiff_Loss",
+    },
+    "our_model": {
+        "display_name": "OurModel",
+        "time_col": "OurModel_Time",
+        "loss_col": "OurModel_Loss",
+    },
+    "ou_nll": {
+        "display_name": "OU-NLL",
+        "time_col": "OUNLL_Time",
+        "loss_col": "OUNLL_Loss",
+        "sigma2_col": "OUNLL_sigma2",
+    },
 }
+
 
 ALIASES = {
     "autodiff": "autodiff",
@@ -16,42 +34,62 @@ ALIASES = {
     "ourmodel": "our_model",
     "our-method": "our_model",
     "ourmethod": "our_model",
+    "ou_nll": "ou_nll",
+    "ounll": "ou_nll",
+    "ou-nll": "ou_nll",
+    "ou nll": "ou_nll",
 }
-
 
 
 def normalize_models(models):
     normalized = []
+
     for model in models:
         key = str(model).strip().lower()
         if key not in ALIASES:
-            raise ValueError(f"Unsupported model '{model}'. Supported: {list(ALIASES)}")
+            raise ValueError(
+                f"Unsupported model '{model}'. Supported: {list(ALIASES)}"
+            )
+
         canonical = ALIASES[key]
         if canonical not in normalized:
             normalized.append(canonical)
+
     return normalized
 
 
-
 def build_shared_init_A(G, Mask, device, dtype, init_seed):
-    Mask_f = Mask.to(device=device, dtype=dtype)
+    mask_f = Mask.to(device=device, dtype=dtype)
+
     torch.manual_seed(init_seed)
     if device.type == "cuda":
         torch.cuda.manual_seed_all(init_seed)
-    return (0.01 * torch.randn(G, G, device=device, dtype=dtype)) * Mask_f
+
+    return (0.01 * torch.randn(G, G, device=device, dtype=dtype)) * mask_f
 
 
-
-def compute_autodiff_epoch0_loss(NumAllGene, Mask, X0, t_span, Y_obs, init_A, reg_lambda=1e-6):
+def compute_autodiff_epoch0_loss(
+    NumAllGene,
+    Mask,
+    X0,
+    t_span,
+    Y_obs,
+    init_A,
+    reg_lambda=1e-6,
+):
     dtype = Y_obs.dtype
     device = Y_obs.device
+
     with torch.no_grad():
         model0 = LTIExact(NumAllGene, Mask).to(device=device, dtype=dtype)
         model0.W.copy_(init_A.to(device=device, dtype=model0.W.dtype))
         Y0 = model0(X0, t_span)
-        loss0 = (F.mse_loss(Y0, Y_obs) + reg_lambda * (model0.W * model0.mask).pow(2).sum()).item()
-    return loss0, Y0
+        loss0 = (
+            F.mse_loss(Y0, Y_obs)
+            + reg_lambda * (model0.W * model0.mask).pow(2).sum()
+        ).item()
 
+    return loss0, Y0
 
 
 def fit_models(
@@ -70,12 +108,21 @@ def fit_models(
     verbose=False,
 ):
     models = normalize_models(models)
+
     outputs = {}
     epoch0 = {}
 
     if "autodiff" in models:
-        loss0, _ = compute_autodiff_epoch0_loss(NumAllGene, Mask, X0, t_span, Y_obs, init_A)
+        loss0, _ = compute_autodiff_epoch0_loss(
+            NumAllGene,
+            Mask,
+            X0,
+            t_span,
+            Y_obs,
+            init_A,
+        )
         epoch0["autodiff"] = loss0
+
         outputs["autodiff"] = run_autodiff_LTI(
             NumAllGene=NumAllGene,
             Mask=Mask,
@@ -97,6 +144,7 @@ def fit_models(
     if "our_model" in models:
         loss0, _ = compute_our_model_epoch0_loss(X0, Y_obs, t_span, Mask, init_A)
         epoch0["our_model"] = loss0
+
         outputs["our_model"] = run_ourmethod_learn_A_xstar(
             X0=X0,
             Y_obs=Y_obs,
@@ -108,6 +156,34 @@ def fit_models(
             K_time=K_time,
             delta=0.07,
             eps=1e-12,
+            print_every=print_every,
+            seed=init_seed,
+            do_print=verbose,
+            init_A=init_A,
+        )
+
+    if "ou_nll" in models:
+        loss0, _, sigma2_0 = compute_ou_nll_epoch0_loss(
+            X0,
+            Y_obs,
+            t_span,
+            Mask,
+            init_A,
+        )
+        epoch0["ou_nll"] = loss0
+        epoch0["ou_nll_sigma2"] = sigma2_0
+
+        outputs["ou_nll"] = run_ou_nll_A_xstar(
+            X0=X0,
+            Y_obs=Y_obs,
+            t_span=t_span,
+            Mask=Mask,
+            epochs=epochs,
+            lr_A=3e-3,
+            lr_xs=3e-3,
+            lr_logsig=1e-3,
+            K_time=K_time,
+            eps=1e-8,
             print_every=print_every,
             seed=init_seed,
             do_print=verbose,

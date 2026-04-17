@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import pandas as pd
 
 from model_runner import MODEL_REGISTRY, normalize_models
@@ -16,7 +18,11 @@ DISPLAY_NAME_MAP = {
     "Autodiff_Loss": "Autodiff Loss",
     "OurModel_Time": "OurModel Time (s)",
     "OurModel_Loss": "OurModel Loss",
+    "OUNLL_Time": "OU-NLL Time (s)",
+    "OUNLL_Loss": "OU-NLL Loss",
+    "OUNLL_sigma2": "OU-NLL sigma2",
 }
+
 
 DISPLAY_ORDER = [
     "Index",
@@ -30,6 +36,9 @@ DISPLAY_ORDER = [
     "Autodiff Loss",
     "OurModel Time (s)",
     "OurModel Loss",
+    "OU-NLL Time (s)",
+    "OU-NLL Loss",
+    "OU-NLL sigma2",
 ]
 
 
@@ -64,7 +73,7 @@ def _get_raw_ordered_cols(models):
     base_cols = ["NumAllGene", "NumTF", "B", "DataRun", "DataSeed", "K_time"]
     model_cols = []
 
-    for key in ["autodiff", "our_model"]:
+    for key in ["autodiff", "our_model", "ou_nll"]:
         if key in models:
             model_cols.extend(
                 [
@@ -72,6 +81,9 @@ def _get_raw_ordered_cols(models):
                     MODEL_REGISTRY[key]["loss_col"],
                 ]
             )
+            sigma2_col = MODEL_REGISTRY[key].get("sigma2_col")
+            if sigma2_col:
+                model_cols.append(sigma2_col)
 
     return base_cols + model_cols
 
@@ -94,6 +106,11 @@ def _build_rename_map(models):
         rename_map[MODEL_REGISTRY["our_model"]["time_col"]] = DISPLAY_NAME_MAP["OurModel_Time"]
         rename_map[MODEL_REGISTRY["our_model"]["loss_col"]] = DISPLAY_NAME_MAP["OurModel_Loss"]
 
+    if "ou_nll" in models:
+        rename_map[MODEL_REGISTRY["ou_nll"]["time_col"]] = DISPLAY_NAME_MAP["OUNLL_Time"]
+        rename_map[MODEL_REGISTRY["ou_nll"]["loss_col"]] = DISPLAY_NAME_MAP["OUNLL_Loss"]
+        rename_map[MODEL_REGISTRY["ou_nll"]["sigma2_col"]] = DISPLAY_NAME_MAP["OUNLL_sigma2"]
+
     return rename_map
 
 
@@ -106,11 +123,14 @@ def build_summary_table(results, models):
         empty_cols = [c for c in DISPLAY_ORDER if c != "Index"]
         return pd.DataFrame(columns=["Index"] + empty_cols)
 
+    # Add missing columns defensively, then select in order.
+    for col in raw_ordered_cols:
+        if col not in df.columns:
+            df[col] = pd.NA
     df = df[raw_ordered_cols].copy()
 
     rename_map = _build_rename_map(models)
     df = df.rename(columns=rename_map)
-
     df.insert(0, "Index", range(len(df)))
 
     avg_row = {col: "-" for col in df.columns}
@@ -121,6 +141,8 @@ def build_summary_table(results, models):
         metric_cols.extend(["Autodiff Time (s)", "Autodiff Loss"])
     if "our_model" in models:
         metric_cols.extend(["OurModel Time (s)", "OurModel Loss"])
+    if "ou_nll" in models:
+        metric_cols.extend(["OU-NLL Time (s)", "OU-NLL Loss", "OU-NLL sigma2"])
 
     for col in metric_cols:
         if col in df.columns:
@@ -130,13 +152,11 @@ def build_summary_table(results, models):
 
     existing_cols = [c for c in DISPLAY_ORDER if c in df_final.columns]
     remaining_cols = [c for c in df_final.columns if c not in existing_cols]
-
     return df_final[existing_cols + remaining_cols]
 
 
 def style_experiment_table(df):
     df_show = df.copy()
-
     if "Index" not in df_show.columns:
         df_show.insert(0, "Index", range(len(df_show)))
 
@@ -149,15 +169,16 @@ def style_experiment_table(df):
         "DataRun",
         "Time points to Calculate Loss in Autodiff",
     ]
-
     time_like_cols = [
         "Autodiff Time (s)",
         "OurModel Time (s)",
+        "OU-NLL Time (s)",
     ]
-
     loss_like_cols = [
         "Autodiff Loss",
         "OurModel Loss",
+        "OU-NLL Loss",
+        "OU-NLL sigma2",
     ]
 
     format_dict = {}
@@ -186,50 +207,52 @@ def style_experiment_table(df):
         .format(format_dict)
         .apply(highlight_avg_row, axis=1)
         .set_caption("Experiment Summary Table")
-        .set_table_styles([
-            {
-                "selector": "caption",
-                "props": [
-                    ("caption-side", "top"),
-                    ("font-size", "16px"),
-                    ("font-weight", "bold"),
-                    ("text-align", "center"),
-                    ("padding", "10px"),
-                ],
-            },
-            {
-                "selector": "th",
-                "props": [
-                    ("background-color", "#D9EAF7"),
-                    ("color", "black"),
-                    ("font-weight", "bold"),
-                    ("text-align", "center"),
-                    ("border", "1px solid #999"),
-                    ("padding", "8px"),
-                ],
-            },
-            {
-                "selector": "td",
-                "props": [
-                    ("text-align", "center"),
-                    ("border", "1px solid #BBB"),
-                    ("padding", "6px"),
-                ],
-            },
-            {
-                "selector": "tr:nth-child(even) td",
-                "props": [("background-color", "#F7F7F7")],
-            },
-            {
-                "selector": "table",
-                "props": [
-                    ("border-collapse", "collapse"),
-                    ("margin", "10px 0"),
-                    ("font-size", "13px"),
-                    ("width", "100%"),
-                ],
-            },
-        ])
+        .set_table_styles(
+            [
+                {
+                    "selector": "caption",
+                    "props": [
+                        ("caption-side", "top"),
+                        ("font-size", "16px"),
+                        ("font-weight", "bold"),
+                        ("text-align", "center"),
+                        ("padding", "10px"),
+                    ],
+                },
+                {
+                    "selector": "th",
+                    "props": [
+                        ("background-color", "#D9EAF7"),
+                        ("color", "black"),
+                        ("font-weight", "bold"),
+                        ("text-align", "center"),
+                        ("border", "1px solid #999"),
+                        ("padding", "8px"),
+                    ],
+                },
+                {
+                    "selector": "td",
+                    "props": [
+                        ("text-align", "center"),
+                        ("border", "1px solid #BBB"),
+                        ("padding", "6px"),
+                    ],
+                },
+                {
+                    "selector": "tr:nth-child(even) td",
+                    "props": [("background-color", "#F7F7F7")],
+                },
+                {
+                    "selector": "table",
+                    "props": [
+                        ("border-collapse", "collapse"),
+                        ("margin", "10px 0"),
+                        ("font-size", "13px"),
+                        ("width", "100%"),
+                    ],
+                },
+            ]
+        )
     )
 
     return styled
@@ -242,6 +265,9 @@ def print_final_summary_banner():
 
 
 def save_summary_tables(df_final, output_dir):
+    if not isinstance(output_dir, Path):
+        output_dir = Path(output_dir)
+
     output_dir.mkdir(parents=True, exist_ok=True)
 
     csv_path = output_dir / "final_summary.csv"
@@ -250,13 +276,11 @@ def save_summary_tables(df_final, output_dir):
     df_final.to_csv(csv_path, index=False)
 
     df_display = df_final.copy()
-
     for col in df_display.columns:
         if col.endswith("Time (s)"):
             df_display[col] = df_display[col].apply(_safe_float6_str)
-        elif col.endswith("Loss"):
+        elif col.endswith("Loss") or col.endswith("sigma2"):
             df_display[col] = df_display[col].apply(_safe_sci_str)
 
     df_display.to_csv(display_csv_path, index=False)
-
     return csv_path, display_csv_path
