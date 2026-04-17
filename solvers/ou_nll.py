@@ -22,14 +22,10 @@ def run_ou_nll_A_xstar(
     seed=0,
     do_print=True,
     init_A=None,
+    init_x_star=None,
     init_log_sigma2=None,
 ):
-    """
-    Fit the same linear dynamical system as `our_model`, but train it using
-    Gaussian negative log-likelihood with a learned global noise variance.
-
-    Returns a dict aligned with the existing project output format.
-    """
+    
     assert X0.dim() == 2 and Y_obs.dim() == 3
 
     B, T, G = Y_obs.shape
@@ -58,14 +54,17 @@ def run_ou_nll_A_xstar(
     else:
         A = apply_mask(init_A.clone().to(device=device, dtype=dtype))
 
-    tail_k = min(10, T)
-    x_star = (
-        Y_obs[:, -tail_k:, :]
-        .mean(dim=(0, 1))
-        .detach()
-        .clone()
-        .to(device=device, dtype=dtype)
-    )
+    if init_x_star is None:
+        tail_k = min(10, T)
+        x_star = (
+            Y_obs[:, -tail_k:, :]
+            .mean(dim=(0, 1))
+            .detach()
+            .clone()
+            .to(device=device, dtype=dtype)
+        )
+    else:
+        x_star = init_x_star.clone().to(device=device, dtype=dtype)
 
     with torch.no_grad():
         E_all0 = torch.matrix_exp(A.unsqueeze(0) * t_span.view(T, 1, 1))
@@ -211,11 +210,15 @@ def run_ou_nll_A_xstar(
     }
 
 
-def compute_ou_nll_epoch0_loss(X0, Y_obs, t_span, Mask, init_A):
-    """
-    Compute the OU-NLL objective at epoch 0 using the shared initial A and the
-    same x_star initialization rule as training.
-    """
+def compute_ou_nll_epoch0_loss(
+    X0,
+    Y_obs,
+    t_span,
+    Mask,
+    init_A,
+    init_x_star=None,
+):
+    
     del Mask  # kept for interface symmetry
 
     device = Y_obs.device
@@ -223,14 +226,17 @@ def compute_ou_nll_epoch0_loss(X0, Y_obs, t_span, Mask, init_A):
     G = Y_obs.shape[2]
 
     with torch.no_grad():
-        tail_k = min(10, Y_obs.shape[1])
-        x_star0 = (
-            Y_obs[:, -tail_k:, :]
-            .mean(dim=(0, 1))
-            .detach()
-            .clone()
-            .to(device=device, dtype=dtype)
-        )
+        if init_x_star is None:
+            tail_k = min(10, Y_obs.shape[1])
+            x_star0 = (
+                Y_obs[:, -tail_k:, :]
+                .mean(dim=(0, 1))
+                .detach()
+                .clone()
+                .to(device=device, dtype=dtype)
+            )
+        else:
+            x_star0 = init_x_star.clone().to(device=device, dtype=dtype)
 
         A0 = init_A.to(device=device, dtype=dtype)
         E0 = torch.matrix_exp(A0.unsqueeze(0) * t_span.view(t_span.shape[0], 1, 1))

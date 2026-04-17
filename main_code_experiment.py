@@ -17,14 +17,7 @@ from utils.summary import (
 
 
 class MainCodeExperiment:
-    """
-    Main experiment runner.
-
-    This version supports:
-    - autodiff
-    - our_model
-    - ou_nll
-    """
+    
 
     def __init__(self, env=2, T=100, output_dir="outputs", default_dtype=torch.float32):
         self.env = env
@@ -81,7 +74,7 @@ class MainCodeExperiment:
             B = cfg["B"]
 
             for run_idx, data_seed in enumerate(data_seeds, start=1):
-                print("\n" + "=" * 70)
+                print("" + "=" * 70)
                 print(
                     f"CONFIG: G={NumAllGene}, TF={NumTF}, B={B} | "
                     f"DATA RUN {run_idx}/{len(data_seeds)} | data_seed={data_seed}"
@@ -129,7 +122,7 @@ class MainCodeExperiment:
                 )
 
                 if print_checkpoint_losses:
-                    print("\nCheckpoint losses (after k epochs):")
+                    print("Checkpoint losses (after k epochs):")
                     for k in checkpoints:
                         parts = []
                         for model_key in models:
@@ -156,16 +149,14 @@ class MainCodeExperiment:
 
                 if plot_each_seed:
                     traj_path = None
-                    loss_path = None
-
+                    
                     if save_figures:
                         stem = (
                             f"G{NumAllGene}_TF{NumTF}_B{B}_"
                             f"run{run_idx:02d}_seed{data_seed}"
                         )
                         traj_path = self.figures_dir / f"{stem}_trajectory.png"
-                        loss_path = self.figures_dir / f"{stem}_loss.png"
-
+                        
                     plot_seed_trajectories(
                         t_span=t_span,
                         Y_obs=Y_obs,
@@ -176,13 +167,7 @@ class MainCodeExperiment:
                         show=display_figures,
                     )
 
-                    plot_seed_losses(
-                        loss_histories=loss_histories,
-                        checkpoints=checkpoints,
-                        title_prefix=title,
-                        save_path=loss_path,
-                        show=display_figures,
-                    )
+                    
 
                 row = {
                     "NumAllGene": NumAllGene,
@@ -196,10 +181,6 @@ class MainCodeExperiment:
                 for model_key in models:
                     row[MODEL_REGISTRY[model_key]["time_col"]] = outputs[model_key]["time_sec"]
                     row[MODEL_REGISTRY[model_key]["loss_col"]] = outputs[model_key]["final_loss"]
-
-                    sigma2_col = MODEL_REGISTRY[model_key].get("sigma2_col")
-                    if sigma2_col and "sigma2_hat" in outputs[model_key]:
-                        row[sigma2_col] = outputs[model_key]["sigma2_hat"]
 
                 results.append(row)
 
@@ -224,8 +205,8 @@ class MainCodeExperiment:
 
         print_final_summary_banner()
 
-        if save_tables:
-            save_summary_tables(df_final, self.output_dir)
+        #if save_tables:
+            #save_summary_tables(df_final, self.output_dir)
 
         metadata = {
             "results": results,

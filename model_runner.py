@@ -23,7 +23,6 @@ MODEL_REGISTRY = {
         "display_name": "OU-NLL",
         "time_col": "OUNLL_Time",
         "loss_col": "OUNLL_Loss",
-        "sigma2_col": "OUNLL_sigma2",
     },
 }
 
@@ -163,15 +162,25 @@ def fit_models(
         )
 
     if "ou_nll" in models:
-        loss0, _, sigma2_0 = compute_ou_nll_epoch0_loss(
+        dtype = Y_obs.dtype
+        tail_k = min(10, Y_obs.shape[1])
+        x_star0 = (
+            Y_obs[:, -tail_k:, :]
+            .mean(dim=(0, 1))
+            .detach()
+            .clone()
+            .to(device=device, dtype=dtype)
+        )
+
+        loss0, _, _ = compute_ou_nll_epoch0_loss(
             X0,
             Y_obs,
             t_span,
             Mask,
             init_A,
+            init_x_star=x_star0,
         )
         epoch0["ou_nll"] = loss0
-        epoch0["ou_nll_sigma2"] = sigma2_0
 
         outputs["ou_nll"] = run_ou_nll_A_xstar(
             X0=X0,
@@ -188,6 +197,7 @@ def fit_models(
             seed=init_seed,
             do_print=verbose,
             init_A=init_A,
+            init_x_star=x_star0,
         )
 
     return outputs, epoch0

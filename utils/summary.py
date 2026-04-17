@@ -20,7 +20,6 @@ DISPLAY_NAME_MAP = {
     "OurModel_Loss": "OurModel Loss",
     "OUNLL_Time": "OU-NLL Time (s)",
     "OUNLL_Loss": "OU-NLL Loss",
-    "OUNLL_sigma2": "OU-NLL sigma2",
 }
 
 
@@ -38,7 +37,6 @@ DISPLAY_ORDER = [
     "OurModel Loss",
     "OU-NLL Time (s)",
     "OU-NLL Loss",
-    "OU-NLL sigma2",
 ]
 
 
@@ -81,9 +79,6 @@ def _get_raw_ordered_cols(models):
                     MODEL_REGISTRY[key]["loss_col"],
                 ]
             )
-            sigma2_col = MODEL_REGISTRY[key].get("sigma2_col")
-            if sigma2_col:
-                model_cols.append(sigma2_col)
 
     return base_cols + model_cols
 
@@ -109,7 +104,6 @@ def _build_rename_map(models):
     if "ou_nll" in models:
         rename_map[MODEL_REGISTRY["ou_nll"]["time_col"]] = DISPLAY_NAME_MAP["OUNLL_Time"]
         rename_map[MODEL_REGISTRY["ou_nll"]["loss_col"]] = DISPLAY_NAME_MAP["OUNLL_Loss"]
-        rename_map[MODEL_REGISTRY["ou_nll"]["sigma2_col"]] = DISPLAY_NAME_MAP["OUNLL_sigma2"]
 
     return rename_map
 
@@ -123,7 +117,6 @@ def build_summary_table(results, models):
         empty_cols = [c for c in DISPLAY_ORDER if c != "Index"]
         return pd.DataFrame(columns=["Index"] + empty_cols)
 
-    # Add missing columns defensively, then select in order.
     for col in raw_ordered_cols:
         if col not in df.columns:
             df[col] = pd.NA
@@ -142,7 +135,7 @@ def build_summary_table(results, models):
     if "our_model" in models:
         metric_cols.extend(["OurModel Time (s)", "OurModel Loss"])
     if "ou_nll" in models:
-        metric_cols.extend(["OU-NLL Time (s)", "OU-NLL Loss", "OU-NLL sigma2"])
+        metric_cols.extend(["OU-NLL Time (s)", "OU-NLL Loss"])
 
     for col in metric_cols:
         if col in df.columns:
@@ -178,7 +171,6 @@ def style_experiment_table(df):
         "Autodiff Loss",
         "OurModel Loss",
         "OU-NLL Loss",
-        "OU-NLL sigma2",
     ]
 
     format_dict = {}
@@ -259,28 +251,20 @@ def style_experiment_table(df):
 
 
 def print_final_summary_banner():
-    print("\n" + "=" * 70)
+    print("" + "=" * 70)
     print("FINAL SUMMARY TABLE (all runs) + OVERALL AVG")
     print("=" * 70)
 
 
-def save_summary_tables(df_final, output_dir):
-    if not isinstance(output_dir, Path):
-        output_dir = Path(output_dir)
-
+def save_summary_tables(df, output_dir):
+    output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     csv_path = output_dir / "final_summary.csv"
-    display_csv_path = output_dir / "final_summary_display.csv"
+    xlsx_path = output_dir / "final_summary.xlsx"
 
-    df_final.to_csv(csv_path, index=False)
+    df.to_csv(csv_path, index=False)
+    df.to_excel(xlsx_path, index=False)
 
-    df_display = df_final.copy()
-    for col in df_display.columns:
-        if col.endswith("Time (s)"):
-            df_display[col] = df_display[col].apply(_safe_float6_str)
-        elif col.endswith("Loss") or col.endswith("sigma2"):
-            df_display[col] = df_display[col].apply(_safe_sci_str)
-
-    df_display.to_csv(display_csv_path, index=False)
-    return csv_path, display_csv_path
+    print(f"Saved CSV: {csv_path}")
+    print(f"Saved XLSX: {xlsx_path}")

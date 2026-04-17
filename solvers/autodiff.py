@@ -50,11 +50,7 @@ def run_autodiff_LTI(
     lr_W=3e-3,
     lr_x=3e-3,
 ):
-    """
-    Torch-optimizer-free autodiff training.
-    This avoids torch.optim.Adam, which can break on some local torch installs
-    that raise: AttributeError: module 'torch' has no attribute '_utils'.
-    """
+    
     if device is None:
         device = X0.device
 
