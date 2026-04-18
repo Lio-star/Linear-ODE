@@ -1,0 +1,3 @@
+[submodule "src/SCOUP"]
+	path = src/SCOUP
+	url = https://github.com/hmatsu1226/SCOUP.git
