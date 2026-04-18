@@ -4,14 +4,15 @@
 
 This repository contains a structured implementation for running and comparing Linear ODE learning methods under a shared experimental pipeline.
 
-The project is designed to make experimentation clean, modular, and reproducible. Solver implementations, experiment orchestration, and utility functions are separated so that multiple methods can be benchmarked under the same settings in a consistent way. The main workflow is notebook-based, making it easy to run experiments, compare methods, visualize optimization behavior, and inspect formatted summary tables.
+The project is designed to keep experimentation modular, readable, and reproducible. Solver implementations, experiment orchestration, and utility functions are separated so that multiple methods can be benchmarked under the same settings in a consistent way.
+
+The main workflow is notebook-based, with `example.ipynb` serving as the primary interface for running experiments, visualizing fitted trajectories, and inspecting formatted summary tables.
 
 At present, the repository supports the following model names in the main experiment pipeline:
 
 - `autodiff`
 - `our_model`
-
-The primary interface for running experiments is `example.ipynb`.
+- `ou_nll`
 
 ---
 
@@ -25,7 +26,8 @@ Linear-ODE/                               (PROJECT ROOT)
 ├── solvers/                              # Solver implementations
 │   ├── __init__.py
 │   ├── autodiff.py                       # Autodiff-based Linear ODE solver
-│   └── our_model.py                      # Custom proposed solver
+│   ├── our_model.py                      # Custom proposed solver
+│   └── ou_nll.py                         # OU-NLL based solver
 │
 ├── utils/                                # Utility Python modules
 │   ├── __init__.py
@@ -34,6 +36,7 @@ Linear-ODE/                               (PROJECT ROOT)
 │   ├── plotting.py                       # Plotting helpers
 │   └── summary.py                        # Summary table creation and styling
 │
+├── __init__.py
 ├── example.ipynb                         # Main notebook for running experiments
 ├── main_code_experiment.py               # High-level experiment pipeline
 ├── model_runner.py                       # Model registry and execution dispatcher
@@ -87,9 +90,12 @@ The notebook provides a simple interface to:
 ### Typical notebook inputs
 
 ```python
-MODELS_TO_RUN = ["autodiff", "our_model"]
+MODELS_TO_RUN = ["autodiff", "our_model" ,"ou_nll"]
 CONFIGS = [{"NumAllGene": 2000, "NumTF": 1500, "B": 1}]
 DATA_SEEDS = [11, 22, 33, 44, 55, 66, 77, 88, 99, 111]
+EPOCHS = 5000
+CHECKPOINTS = [0, 1000, 2000, 3000, 4000, 5000]
+INIT_SEED = 0
 ```
 
 By default, the notebook shows plots and the summary table inline and does not save files unless saving is explicitly enabled.
@@ -121,7 +127,7 @@ It is intended for:
 - selecting models
 - setting experiment configurations
 - running experiments
-- visualizing plots inline
+- displaying fitted trajectories
 - viewing the final formatted summary table
 
 ### `main_code_experiment.py`
@@ -154,6 +160,9 @@ This folder contains the actual solver implementations used in the experiments.
 - `our_model.py`  
   Implements the custom proposed method.
 
+- `ou_nll.py`
+  Implements the OU-NLL based solver.
+
 ### `utils/`
 
 This folder contains helper modules used across the project.
@@ -177,7 +186,8 @@ This folder contains helper modules used across the project.
 4. Choose data seeds and training epochs
 5. Run the notebook cells
 6. Review:
-   - loss curves
+   - fitted trajectories
+   - runtime comparison
    - runtime comparison
    - final loss comparison
    - formatted summary table
@@ -191,9 +201,9 @@ We currently include the following methods in the experiment pipeline:
 | Method      | Description                      |
 |-------------|----------------------------------|
 | `autodiff`  | Autodiff-based Linear ODE solver |
-| `our_model` | Custom proposed Linear ODE solver |
-
-Both methods can be selected directly by name from the notebook interface.
+| `our_model` | Custom proposed Linear ODE solver|
+| `ou_nll`    | OU-NLL based solver              |
+These methods can be selected directly by name from the notebook interface.
 
 ---
 
